@@ -126,6 +126,15 @@ void MainWindow::UpdateTextView() {
         }
         output += " " + QString::number(pixels[c]) + "\n";
     }
+    output += "\n\n";
+    for(c=0;c<8;c++) {
+        output += "POKE USR \"A\"+"+QString::number(c)+", BIN ";
+        for(i=0;i<8;i++) {
+            j = (pixels[c] >> i) & 1;
+            output += QString::number(j);
+        }
+        output += "\n";
+    }
     ui->outputView->setPlainText(output);
 }
 
