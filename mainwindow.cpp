@@ -1,11 +1,47 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
+#ifdef Q_OS_WIN
+QString GetWinVer() {
+    // http://web3.codeproject.com/Messages/4823136/Re-Another-Way.aspx
+    NTSTATUS (WINAPI *RtlGetVersion)(LPOSVERSIONINFOEXW);
+    OSVERSIONINFOEXW osInfo;
+
+    *(FARPROC*)&RtlGetVersion = GetProcAddress(GetModuleHandleA("ntdll"), "RtlGetVersion");
+    QString result;
+    if (NULL != RtlGetVersion) {
+        osInfo.dwOSVersionInfoSize = sizeof(osInfo);
+        RtlGetVersion(&osInfo);
+        result = "Windows ";
+        if(osInfo.dwPlatformId == VER_PLATFORM_WIN32_NT) result += "NT ";
+        result += QString::number(osInfo.dwMajorVersion) + "." + QString::number(osInfo.dwMinorVersion);
+    }
+    return result;
+}
+#endif
+
+QString GetOS() {
+    QString OS;
+#ifdef Q_OS_LINUX
+    OS = "X11; Linux";
+#endif
+#ifdef Q_OS_FREEBSD
+    OS = "X11; FreeBSD";
+#endif
+#ifdef Q_OS_WIN
+    OS = GetWinVer();
+#endif
+#ifdef Q_OS_MAC
+    OS = "Macintosh; Mac OSX";
+#endif
+    return OS;
+}
+
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow) {
     ui->setupUi(this);
     this->setMaximumSize(763,547);
     this->setWindowTitle("UDG Plop [Untitled]");
-    IsSaved = false;
+    IsSaved = true;
     CurrentFile = "Untitled";
     int i,j,c;
     for(i=0;i<8;i++) {
@@ -54,7 +90,14 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     btnSave->setText("Save");
     connect(btnSave,SIGNAL(clicked()),this,SLOT(SaveFileClick()));
     ui->mainToolBar->addWidget(btnSave);
+
+    btnAbout = new QToolButton(this);
+    btnAbout->setText("About");
+    connect(btnAbout,SIGNAL(clicked()),this,SLOT(AboutClick()));
+    ui->mainToolBar->addWidget(btnAbout);
+
     UpdateTextView();
+    QTimer::singleShot(200, this, SLOT(CheckUpdates()));
 }
 
 MainWindow::~MainWindow() {
@@ -180,10 +223,44 @@ void MainWindow::SetButton(int x, int y, uchar v) {
     }
 }
 
+void MainWindow::AboutClick() {
+    QString html;
+    html = "<p><b style=\"font-size: 14pt\">"+QString(APPNAME)+"</b> "+QString(APPVER)+"<br>\n";
+    html.append("&copy;2019 <a href=\"https://www.matthewhipkin.co.uk\" style=\"color: #FF0000\">Matthew Hipkin</a><br>\n");
+    html.append("<p>ZX Spectrum UDG Creator.</p>");
+    //html.append("<p><a href=\"https://twitter.com/hippy2094\"><img src=\":/images/logo_twitter_25px.png\"></a> <a href=\"https://sourceforge.net/projects/base64-binary/\"><img src=\":/images/sourceforge_logo_small.png\"></a> <a href=\"https://qt.io\"><img src=\":/images/Built_with_Qt_RGB_logo.png\"></p>");
+    //html.append("<p><a href=\"https://qt.io\"><img src=\":/images/Built_with_Qt_RGB_logo.png\"></p>");
+    QMessageBox::about(this,"About "+QString(APPNAME),html);
+}
+
 void MainWindow::closeEvent(QCloseEvent *event) {
     if(!IsSaved) {
         if(QMessageBox(QMessageBox::Information, "Unsaved file", "Do you wish to save this file?", QMessageBox::Yes|QMessageBox::No).exec() == QMessageBox::Yes) {
             SaveFileClick();
         }
+    }
+}
+
+void MainWindow::CheckUpdates() {
+    QString ua;
+    ua = "Mozilla/5.0 (compatible; "+GetOS()+"; "+APPNAME+" "+APPVER+" ("+QString::number(CURRVER)+"))";
+    QNetworkAccessManager nam;
+    QUrl url("http://www.matthewhipkin.co.uk/udgplop.txt");
+    QNetworkRequest req(url);
+    req.setRawHeader("User-Agent",QByteArray(ua.toStdString().c_str()));
+    QNetworkReply* reply = nam.get(req);
+    QEventLoop loop;
+    connect(reply, SIGNAL(finished()), &loop, SLOT(quit()));
+    loop.exec();
+    QByteArray bytes = reply->readAll();
+    QString t = QString::fromUtf8(bytes);
+    if(t.trimmed().toInt() > CURRVER) {
+        labelUpdate = new QLabel(this);
+        labelUpdate->setText("<p>A new version is available, <a href=\"https://www.matthewhipkin.co.uk\">click here</a> to get it!");
+        labelUpdate->setVisible(true);
+        labelUpdate->setStyleSheet("background-color: qlineargradient(spread:pad, x1:0, y1:1, x2:0, y2:0, stop:0 rgba(255, 204, 204, 255), stop:1 rgba(255, 255, 255, 255)); }");
+        labelUpdate->setTextInteractionFlags(Qt::TextBrowserInteraction);
+        labelUpdate->setOpenExternalLinks(true);
+        ui->statusBar->addWidget(labelUpdate);
     }
 }

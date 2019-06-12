@@ -1,6 +1,7 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include "appvars.h"
 #include <QMainWindow>
 #include <QPushButton>
 #include <QGridLayout>
@@ -8,6 +9,11 @@
 #include <QToolButton>
 #include <QFileDialog>
 #include <QMessageBox>
+#include <QLabel>
+#include <QtNetwork/QNetworkAccessManager>
+#include <QtNetwork/QNetworkRequest>
+#include <QtNetwork/QNetworkReply>
+#include <QTimer>
 #include <QDebug>
 
 namespace Ui {
@@ -29,10 +35,12 @@ private:
     QToolButton *btnNew;
     QToolButton *btnOpen;
     QToolButton *btnSave;
+    QToolButton *btnAbout;
     void UpdateTextView();
     void SetButton(int x, int y, uchar v);
     bool IsSaved;
     QString CurrentFile;
+    QLabel *labelUpdate;
 
 public slots:
     void closeEvent(QCloseEvent *event);
@@ -40,6 +48,8 @@ public slots:
     void OpenFileClick();
     void SaveFileClick();
     void NewClick();
+    void AboutClick();
+    void CheckUpdates();
 };
 
 #endif // MAINWINDOW_H
