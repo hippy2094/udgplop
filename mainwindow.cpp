@@ -4,8 +4,9 @@
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow) {
     ui->setupUi(this);
     this->setMaximumSize(763,547);
-    this->setWindowTitle("UDG Plop");
+    this->setWindowTitle("UDG Plop [Untitled]");
     IsSaved = false;
+    CurrentFile = "Untitled";
     int i,j,c;
     for(i=0;i<8;i++) {
         pixels[i] = 0;
@@ -68,6 +69,7 @@ void MainWindow::PixelButtonClick() {
     int j = parts[1].toInt();
     pixels[i] ^= 1UL << j;
     UpdateTextView();
+    IsSaved = false;
 }
 
 void MainWindow::UpdateTextView() {
@@ -85,6 +87,11 @@ void MainWindow::UpdateTextView() {
 }
 
 void MainWindow::OpenFileClick() {
+    if(!IsSaved) {
+        if(QMessageBox(QMessageBox::Information, "Unsaved file", "Do you wish to save this file?", QMessageBox::Yes|QMessageBox::No).exec() == QMessageBox::Yes) {
+            SaveFileClick();
+        }
+    }
     QString filename = QFileDialog::getOpenFileName(this, "Open file", "", "*.udgp");
     if(filename.isEmpty()) return;
     QFile f(filename);
@@ -116,28 +123,40 @@ void MainWindow::OpenFileClick() {
         for(c=0;c<8;c++) {
             for(i=0;i<8;i++) {
                 j = (pixels[c] >> i) & 1;
-                SetButton(c,i,j);
+                SetButton(c,i,static_cast<uchar>(j));
             }
         }
-        IsSaved = false;
+        IsSaved = true;
+        this->setWindowTitle("UDG Plop ["+filename+"]");
+        CurrentFile = filename;
     }
 }
 
 void MainWindow::SaveFileClick() {
-    QString outputfile = QFileDialog::getSaveFileName(this, "Choose file","","*.udgp");
+    QString outputfile;
+    if(CurrentFile.isEmpty() || CurrentFile == "Untitled") {
+      outputfile = QFileDialog::getSaveFileName(this, "Choose file","","*.udgp");
+    }
+    else outputfile = CurrentFile;
     if(outputfile.isEmpty()) return;
     if(!outputfile.endsWith(".udgp")) outputfile.append(".udgp");
-    QFileInfo fo(outputfile);
     QFile f(outputfile);
     if(f.open(QIODevice::WriteOnly)) {
         QTextStream out(&f);
         out << ui->outputView->toPlainText();
         f.close();
         IsSaved = true;
+        this->setWindowTitle("UDG Plop ["+outputfile+"]");
+        CurrentFile = outputfile;
     }
 }
 
 void MainWindow::NewClick() {
+    if(!IsSaved) {
+        if(QMessageBox(QMessageBox::Information, "Unsaved file", "Do you wish to save this file?", QMessageBox::Yes|QMessageBox::No).exec() == QMessageBox::Yes) {
+            SaveFileClick();
+        }
+    }
     int i;
     for(i=0;i<8;i++) {
         pixels[i] = 0;
@@ -157,6 +176,14 @@ void MainWindow::SetButton(int x, int y, uchar v) {
         if(button->text() == cheatstring) {
             if(v == 0) button->setChecked(false);
             else button->setChecked(true);
+        }
+    }
+}
+
+void MainWindow::closeEvent(QCloseEvent *event) {
+    if(!IsSaved) {
+        if(QMessageBox(QMessageBox::Information, "Unsaved file", "Do you wish to save this file?", QMessageBox::Yes|QMessageBox::No).exec() == QMessageBox::Yes) {
+            SaveFileClick();
         }
     }
 }

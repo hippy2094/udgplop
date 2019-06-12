@@ -7,6 +7,7 @@
 #include <QStringList>
 #include <QToolButton>
 #include <QFileDialog>
+#include <QMessageBox>
 #include <QDebug>
 
 namespace Ui {
@@ -31,8 +32,10 @@ private:
     void UpdateTextView();
     void SetButton(int x, int y, uchar v);
     bool IsSaved;
+    QString CurrentFile;
 
 public slots:
+    void closeEvent(QCloseEvent *event);
     void PixelButtonClick();
     void OpenFileClick();
     void SaveFileClick();
